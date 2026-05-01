@@ -115,6 +115,23 @@ npm run dev
 The map and sidebar stack vertically on screens < 768px. Touch gestures are handled natively by Leaflet.
 
 ## 🚀 Deployment
-- **Frontend**: Deploy `frontend/` to Vercel — `vercel.json` is pre-configured
-- **Backend**: Deploy to Render (set env vars in dashboard)
-- Make sure CORS allows only your frontend domain in `server.js` (do not keep `app.use(cors())` wide open in production).
+
+### Render (recommended)
+This repo includes a `render.yaml` blueprint for deploying both services.
+
+1. Push latest code to GitHub.
+2. In Render, create a new **Blueprint** and select this repository.
+3. Render will provision:
+   - `localvibe-backend` (Node web service)
+   - `localvibe-frontend` (Static site)
+4. Set backend environment variables:
+   - `MONGO_URI`
+   - `SERP_API_KEY`
+   - `CORS_ORIGIN` = frontend URL (for example: `https://localvibe-frontend.onrender.com`)
+5. Set frontend environment variable:
+   - `VITE_API_BASE_URL` = `https://localvibe-backend.onrender.com/api/events`
+6. Redeploy both services after setting vars.
+
+### Alternate deployment
+- **Frontend**: Deploy `frontend/` to Vercel
+- **Backend**: Deploy `backend/` to Render

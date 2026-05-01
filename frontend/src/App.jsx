@@ -5,7 +5,7 @@ import AddEventForm from './components/Events/AddEventForm';
 import { Plus, Compass, CalendarCheck, Sparkles, RefreshCw, Search, MapPin, SlidersHorizontal, X } from 'lucide-react';
 import './index.css';
 
-const API = 'http://127.0.0.1:5000/api/events';
+const API = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5000/api/events';
 const CATEGORIES = ['All', 'Music', 'Food', 'Art', 'Tech', 'Community', 'Other'];
 
 const App = () => {

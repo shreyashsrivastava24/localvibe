@@ -1,7 +1,7 @@
 import React from 'react';
 import { Calendar, MapPin, Users, UserPlus, Star, Heart } from 'lucide-react';
 
-const API = 'http://127.0.0.1:5000/api/events';
+const API = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5000/api/events';
 
 const CategoryBadge = ({ category }) => (
   <span className={`badge badge-${category}`}>{category}</span>

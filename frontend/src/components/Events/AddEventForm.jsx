@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, MapPin, Search, Loader2, Star } from 'lucide-react';
 
-const API = 'http://127.0.0.1:5000/api/events';
+const API = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5000/api/events';
 const CATEGORIES = ['Music', 'Food', 'Art', 'Tech', 'Community', 'Other'];
 
 const AddEventForm = ({ onClose, onEventAdded }) => {
