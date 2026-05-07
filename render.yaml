@@ -27,4 +27,4 @@ services:
     pullRequestPreviewsEnabled: true
     envVars:
       - key: VITE_API_BASE_URL
-        value: https://localvibe-backend-bdmi.onrender.com
+        value: https://localvibe-backend-bdmi.onrender.com/api/events

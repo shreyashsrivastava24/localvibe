@@ -10,11 +10,12 @@ mongoose.connect(MONGO_URI)
   .then(async () => {
     console.log('Connected to MongoDB');
 
-    // Reset users and events, then fetch live events.
+    // wipe everything so we start fresh
     await Event.deleteMany({});
     await User.deleteMany({});
-    console.log('Cleared existing users and events');
+    console.log('Cleared existing data');
 
+    // create a few test users
     const user1 = new User({
       name: 'Shreyash Srivastava',
       email: 'shreyashsrivastava744@gmail.com',
@@ -26,23 +27,24 @@ mongoose.connect(MONGO_URI)
 
     await Promise.all([user1.save(), user2.save(), user3.save()]);
 
-    // Shreyash follows Alice and Bob
+    // set up follow relationships so the "friends attending" feature works
     user1.followedUsers = [user2._id, user3._id];
     await user1.save();
 
-    const seedLocations = [
-      { lat: 28.4359, lng: 77.3294 }, // Ghaziabad / NCR
-      { lat: 40.7128, lng: -74.0060 }, // New York
-      { lat: 51.5072, lng: -0.1276 }, // London
+    // fetch real events from Google for a few major cities
+    const cities = [
+      { lat: 28.4359, lng: 77.3294 },  // Greater Noida / NCR
+      { lat: 40.7128, lng: -74.0060 },  // New York
+      { lat: 51.5072, lng: -0.1276 },   // London
     ];
 
     let totalSynced = 0;
-    for (const loc of seedLocations) {
+    for (const loc of cities) {
       const count = await syncExternalEvents(loc.lat, loc.lng);
       totalSynced += Number(count || 0);
     }
 
-    console.log(`Seed complete: 3 users created, ${totalSynced} live events synced.`);
+    console.log(`Done — 3 users + ${totalSynced} live events seeded.`);
     mongoose.connection.close();
   })
   .catch(err => console.error('Seed error:', err));

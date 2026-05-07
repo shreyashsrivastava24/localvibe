@@ -30,7 +30,7 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(true);
   const mapContainerRef = useRef(null);
 
-  // Initialise: get location → sync SERP → fetch events
+  // on mount: grab location, trigger SERP sync, then load events
   useEffect(() => {
     const init = async (lat, lng) => {
       setUserLocation({ lat, lng });
@@ -54,20 +54,20 @@ const App = () => {
 
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
-        p => init(p.coords.latitude, p.coords.longitude),
-        () => init(28.4359, 77.3294) // Gaur City, Ghaziabad fallback
+        pos => init(pos.coords.latitude, pos.coords.longitude),
+        () => init(28.4359, 77.3294) // fallback: NCR area
       );
     } else {
       init(28.4359, 77.3294);
     }
   }, []);
 
-  // Fetch events whenever filters or location change
+  // refetch whenever filters or location change
   const fetchData = async () => {
     if (!userLocation) return;
     setIsLoading(true);
     try {
-      const q = new URLSearchParams({
+      const params = new URLSearchParams({
         category: selectedCategory,
         search: searchQuery,
         lat: userLocation.lat,
@@ -77,11 +77,11 @@ const App = () => {
         freeOnly: String(freeOnly),
         featuredOnly: String(featuredOnly),
       });
-      if (dateFrom) q.append('dateFrom', dateFrom);
-      if (dateTo) q.append('dateTo', dateTo);
+      if (dateFrom) params.append('dateFrom', dateFrom);
+      if (dateTo) params.append('dateTo', dateTo);
 
       const [evRes, recRes, myRes] = await Promise.all([
-        fetch(`${API}?${q}`),
+        fetch(`${API}?${params}`),
         fetch(`${API}/recommendations`),
         fetch(`${API}/my-events`),
       ]);
@@ -101,7 +101,11 @@ const App = () => {
   }, [userLocation, selectedCategory, searchQuery, dateFrom, dateTo, radiusKm, weekendOnly, freeOnly, featuredOnly]);
 
   const getActiveEvents = () => {
-    const base = activeTab === 'my-events' ? myEvents : activeTab === 'for-you' ? recommendations : events;
+    let base;
+    if (activeTab === 'my-events') base = myEvents;
+    else if (activeTab === 'for-you') base = recommendations;
+    else base = events;
+
     const sorted = [...base];
     if (sortBy === 'popular') {
       sorted.sort((a, b) => (b.attendees || 0) - (a.attendees || 0));
@@ -117,6 +121,7 @@ const App = () => {
 
   const handleEventClick = (id) => {
     setSelectedEventId(id);
+    // on mobile, scroll down to the map when a card is tapped
     if (window.innerWidth <= 768 && mapContainerRef.current) {
       mapContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -124,9 +129,8 @@ const App = () => {
 
   return (
     <div className="app-container">
-      {/* ─── SIDEBAR ─── */}
+      {/* sidebar */}
       <div className="sidebar">
-        {/* Header */}
         <div className="sidebar-header">
           <div className="logo">LocalVibe<span className="logo-dot" /></div>
           <div className="header-actions">
@@ -139,7 +143,7 @@ const App = () => {
           </div>
         </div>
 
-        {/* Tabs */}
+        {/* tabs */}
         <div className="tab-bar">
           {[
             { id: 'discover', label: 'Discover', icon: <Compass size={16} /> },
@@ -152,7 +156,7 @@ const App = () => {
           ))}
         </div>
 
-        {/* Status bar */}
+        {/* sync status */}
         {(isSyncing || syncMessage) && (
           <div className={`status-bar ${syncMessage.startsWith('✓') ? 'success' : 'info'}`}>
             {isSyncing && <div className="spinner-small" />}
@@ -175,7 +179,7 @@ const App = () => {
           </div>
         </div>
 
-        {/* Filters */}
+        {/* filters */}
         <div className="filter-section">
           <div className="search-bar">
             <Search size={14} className="search-icon" />
@@ -234,7 +238,7 @@ const App = () => {
               </select>
             </div>
           </div>
-          {/* Date Range Filter */}
+          {/* date range */}
           <div className="date-filter-wrap">
             <div className="date-filter-title">Date range</div>
             <div className="date-filter">
@@ -271,7 +275,7 @@ const App = () => {
           )}
         </div>
 
-        {/* Events */}
+        {/* event cards */}
         {isLoading && activeEvents.length === 0 ? (
           <div className="loading-state">
             <div className="spinner-large" />
@@ -287,7 +291,7 @@ const App = () => {
         )}
       </div>
 
-      {/* ─── MAP ─── */}
+      {/* map */}
       <div className="map-container" ref={mapContainerRef}>
         {userLocation && (
           <EventMap
@@ -300,7 +304,7 @@ const App = () => {
         )}
       </div>
 
-      {/* ─── ADD EVENT MODAL ─── */}
+      {/* add event modal */}
       {showAddForm && (
         <AddEventForm onClose={() => setShowAddForm(false)} onEventAdded={() => { fetchData(); setShowAddForm(false); }} />
       )}

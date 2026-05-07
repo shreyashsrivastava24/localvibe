@@ -4,10 +4,12 @@ const Event = require('../models/Event');
 const User = require('../models/User');
 const { syncExternalEvents } = require('../utils/externalEvents');
 
-// Track whether we've done the initial SERP sync for a location
+// keep track of which lat/lng areas we've already synced so we don't
+// hammer the SERP API on every single request
 const syncedLocations = new Set();
 
-// Lightweight local auth middleware for development.
+// simple auth — in dev we just grab the first user (me) from the db.
+// TODO: swap this out for proper JWT when we add login/signup
 const localAuth = async (req, res, next) => {
   try {
     let user = await User.findOne({ email: 'shreyashsrivastava744@gmail.com' });
@@ -27,13 +29,13 @@ const localAuth = async (req, res, next) => {
   }
 };
 
-// @route   POST /api/events/sync
-// Called by frontend to trigger SERP sync for a given location
+// trigger SERP sync for a given lat/lng — called by the frontend on load
 router.post('/sync', async (req, res) => {
   try {
     const { lat, lng } = req.body;
     if (!lat || !lng) return res.status(400).json({ message: 'lat and lng required' });
 
+    // round to 1 decimal so nearby coordinates share the same key
     const key = `${Math.round(lat * 10) / 10},${Math.round(lng * 10) / 10}`;
     if (syncedLocations.has(key)) {
       return res.json({ message: 'Already synced for this area', synced: false });
@@ -48,7 +50,7 @@ router.post('/sync', async (req, res) => {
   }
 });
 
-// @route   GET /api/events
+// get events — supports category, search, geo, date, and quick-filter params
 router.get('/', localAuth, async (req, res) => {
   try {
     const {
@@ -68,14 +70,13 @@ router.get('/', localAuth, async (req, res) => {
     if (category && category !== 'All') query.category = category;
     if (search) query.title = { $regex: search, $options: 'i' };
 
-    // Date range filter
+    // date range
     if (dateFrom || dateTo) {
       query.startDate = {};
       if (dateFrom) query.startDate.$gte = new Date(dateFrom);
       if (dateTo) query.startDate.$lte = new Date(dateTo + 'T23:59:59');
     }
 
-    // Quick filters
     if (freeOnly === 'true') {
       query.price = 0;
     }
@@ -83,8 +84,9 @@ router.get('/', localAuth, async (req, res) => {
       query.isFeatured = true;
     }
     if (weekendOnly === 'true') {
+      // figure out the coming Sat-Sun window
       const now = new Date();
-      const day = now.getDay(); // 0 Sun, 6 Sat
+      const day = now.getDay();
       const daysUntilSaturday = (6 - day + 7) % 7;
       const saturdayStart = new Date(now);
       saturdayStart.setDate(now.getDate() + daysUntilSaturday);
@@ -103,7 +105,7 @@ router.get('/', localAuth, async (req, res) => {
         : sundayEnd;
     }
 
-    // Geospatial filter if coordinates available
+    // geo filter
     if (lat && lng) {
       query.location = {
         $near: {
@@ -115,7 +117,7 @@ router.get('/', localAuth, async (req, res) => {
 
     const events = await Event.find(query).sort({ isFeatured: -1, startDate: 1 });
 
-    // Add social context (friends attending)
+    // attach social info — how many of my friends are attending each event
     const enrichedEvents = events.map(event => {
       const friendAttendees = event.attendeeList.filter(id =>
         req.user.followedUsers.some(friendId => friendId.equals(id))
@@ -135,7 +137,7 @@ router.get('/', localAuth, async (req, res) => {
   }
 });
 
-// @route   GET /api/events/nearby
+// simple nearby endpoint (no auth needed)
 router.get('/nearby', async (req, res) => {
   try {
     const { lat, lng, radius = 100000 } = req.query;
@@ -155,7 +157,7 @@ router.get('/nearby', async (req, res) => {
   }
 });
 
-// @route   GET /api/events/recommendations
+// recommendations based on what categories the user has RSVP'd to before
 router.get('/recommendations', localAuth, async (req, res) => {
   try {
     const events = await Event.find({
@@ -168,7 +170,7 @@ router.get('/recommendations', localAuth, async (req, res) => {
   }
 });
 
-// @route   GET /api/events/my-events
+// events the current user RSVP'd to
 router.get('/my-events', localAuth, async (req, res) => {
   try {
     const user = await User.findById(req.user._id).populate('rsvpEvents');
@@ -178,7 +180,7 @@ router.get('/my-events', localAuth, async (req, res) => {
   }
 });
 
-// @route   POST /api/events
+// create a new event
 router.post('/', async (req, res) => {
   try {
     const { title, description, startDate, endDate, address, lat, lng, category, price, imageUrl, isFeatured } = req.body;
@@ -206,7 +208,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// @route   PUT /api/events/:id/rsvp
+// mark "Going"
 router.put('/:id/rsvp', localAuth, async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
@@ -221,6 +223,7 @@ router.put('/:id/rsvp', localAuth, async (req, res) => {
     await event.save();
 
     req.user.rsvpEvents.push(event._id);
+    // also update their category preferences so recommendations improve over time
     if (!req.user.interestedCategories.includes(event.category)) {
       req.user.interestedCategories.push(event.category);
     }
@@ -232,7 +235,7 @@ router.put('/:id/rsvp', localAuth, async (req, res) => {
   }
 });
 
-// @route   PUT /api/events/:id/interested
+// mark "Interested" (soft bookmark, doesn't count as attending)
 router.put('/:id/interested', localAuth, async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);

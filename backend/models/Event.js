@@ -25,7 +25,7 @@ const EventSchema = new mongoose.Schema({
       required: true
     },
     coordinates: {
-      type: [Number], // [longitude, latitude]
+      type: [Number], // [lng, lat] — mongo expects longitude first
       required: true
     },
     address: {
@@ -61,7 +61,7 @@ const EventSchema = new mongoose.Schema({
   }]
 }, { timestamps: true });
 
-// 2dsphere index for geospatial queries
+// needed for $near and $geoWithin queries
 EventSchema.index({ location: '2dsphere' });
 
 module.exports = mongoose.model('Event', EventSchema);

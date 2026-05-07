@@ -22,10 +22,12 @@ const UserSchema = new mongoose.Schema({
   interestedCategories: [{
     type: String
   }],
+  // events the user confirmed "Going" to
   rsvpEvents: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Event'
   }],
+  // events the user just bookmarked / marked "Interested"
   interestedEvents: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Event'

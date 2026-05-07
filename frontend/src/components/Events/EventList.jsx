@@ -7,20 +7,19 @@ const CategoryBadge = ({ category }) => (
   <span className={`badge badge-${category}`}>{category}</span>
 );
 
-const categoryFallbackImage = () =>
-  `https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80`;
+// generic fallback if an event image is broken or missing
+const FALLBACK_IMG = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80';
 
-const getSharpImageUrl = (url, category) => {
-  if (!url || typeof url !== 'string') return categoryFallbackImage(category);
-
+// try to upscale google thumbnail URLs so they don't look blurry
+function getSharpImageUrl(url) {
+  if (!url || typeof url !== 'string') return FALLBACK_IMG;
   let upgraded = url;
   upgraded = upgraded.replace(/=s\d+(-c)?/g, '=s1200');
   upgraded = upgraded.replace(/w\d+-h\d+/g, 'w1200-h800');
   upgraded = upgraded.replace(/([?&])w=\d+/g, '$1w=1200');
   upgraded = upgraded.replace(/([?&])h=\d+/g, '$1h=800');
-
   return upgraded;
-};
+}
 
 const EventList = ({ events, onEventClick, selectedEventId, onRsvp }) => {
   const handleRsvp = async (e, id) => {
@@ -58,17 +57,14 @@ const EventList = ({ events, onEventClick, selectedEventId, onRsvp }) => {
           className={`event-card ${selectedEventId === event._id ? 'active' : ''} ${event.isFeatured ? 'featured' : ''}`}
           onClick={() => onEventClick(event._id)}
         >
-          {/* Image */}
           <div className="event-image-wrap">
             <img
-              src={getSharpImageUrl(event.imageUrl, event.category)}
+              src={getSharpImageUrl(event.imageUrl)}
               alt={event.title}
               className="event-image"
               loading="lazy"
               decoding="async"
-              onError={(e) => {
-                e.currentTarget.src = categoryFallbackImage(event.category);
-              }}
+              onError={(e) => { e.currentTarget.src = FALLBACK_IMG; }}
             />
             <div className="event-image-overlay" />
             <div className="event-badges">
@@ -79,7 +75,6 @@ const EventList = ({ events, onEventClick, selectedEventId, onRsvp }) => {
             </div>
           </div>
 
-          {/* Body */}
           <div className="event-body">
             <h3 className="event-title">{event.title}</h3>
             <p className="event-description">
@@ -101,7 +96,6 @@ const EventList = ({ events, onEventClick, selectedEventId, onRsvp }) => {
               </div>
             </div>
 
-            {/* Friends attending */}
             {event.friendsAttending > 0 && (
               <div className="friends-badge">
                 <UserPlus size={11} />
@@ -109,7 +103,6 @@ const EventList = ({ events, onEventClick, selectedEventId, onRsvp }) => {
               </div>
             )}
 
-            {/* Footer */}
             <div className="event-footer">
               <span className={`price-tag ${event.price === 0 ? 'free' : ''}`}>
                 {event.price === 0 ? 'FREE' : `₹${event.price}`}
@@ -128,7 +121,7 @@ const EventList = ({ events, onEventClick, selectedEventId, onRsvp }) => {
                   {event.isRsvpd ? '✓ Going' : 'Going'}
                 </button>
                 <button
-                  className={`btn btn-interested`}
+                  className="btn btn-interested"
                   style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem' }}
                   onClick={e => handleInterested(e, event._id)}
                   disabled={event.isInterested}
